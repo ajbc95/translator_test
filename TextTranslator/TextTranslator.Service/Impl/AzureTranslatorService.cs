@@ -9,6 +9,8 @@ public class AzureTranslatorService(TextTranslationClient _translatorClient, IJo
 {
     public override async Task<TranslationResult?> TranslateAsync(string text, string targetLanguage = "es")
     {
+        await Task.Delay(10000); // Simulate some delay
+
         if (string.IsNullOrWhiteSpace(text))
             return null;
 
@@ -16,8 +18,6 @@ public class AzureTranslatorService(TextTranslationClient _translatorClient, IJo
         var translation = response.Value.FirstOrDefault();
         var translatedText = string.Join(Environment.NewLine,
             translation?.Translations?.Select(_ => _.Text)?.AsEnumerable() ?? []) ?? string.Empty;
-
-        await Task.Delay(10000); // Simulate some delay
 
         return new TranslationResult(
             SourceText: text,

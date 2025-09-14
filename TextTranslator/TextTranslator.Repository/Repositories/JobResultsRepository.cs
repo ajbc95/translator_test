@@ -1,6 +1,6 @@
-﻿using Dapper;
-using Microsoft.Data.SqlClient;
+﻿using Microsoft.Data.SqlClient;
 using TextTranslator.Repository.Contracts;
+using TextTranslator.Repository.Extensions;
 
 namespace TextTranslator.Repository.Repositories;
 
@@ -12,7 +12,7 @@ public class JobResultsRepository(SqlConnection connection) : IJobResultsReposit
             INSERT INTO [Translator].[JobResults] ([workId], [result]) VALUES
             (@workId, @result)";
 
-        return connection.ExecuteAsync(sql, new { workId , result });
+        return connection.ExecuteWithRetriesAsync(sql, new { workId, result });
     }
 
     public Task<string?> GetResultAsync(Guid workId)
@@ -22,6 +22,6 @@ public class JobResultsRepository(SqlConnection connection) : IJobResultsReposit
             FROM [Translator].[JobResults]
             WHERE [workId] = @workId";
 
-        return connection.QuerySingleOrDefaultAsync<string>(sql, new { workId });
+        return connection.QuerySingleOrDefaultWithRetriesAsync<string>(sql, new { workId });
     }
 }

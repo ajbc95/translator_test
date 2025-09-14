@@ -1,4 +1,5 @@
 ﻿using Hangfire;
+using TextTranslator.Common.Helpers;
 using TextTranslator.Repository.Contracts;
 using TextTranslator.Service.Contracts;
 using TextTranslator.Service.Model;
@@ -29,7 +30,7 @@ public abstract class TranslatorService(IJobResultsRepository resultsRepository)
     {
         try
         {
-            var translation = await TranslateAsync(text, targetLanguage);
+            var translation = await RetryHelper.RetryWithDelayAsync(() => TranslateAsync(text, targetLanguage));
             var serializedResult = System.Text.Json.JsonSerializer.Serialize(translation);
 
             await resultsRepository.SaveResultAsync(workId, serializedResult);

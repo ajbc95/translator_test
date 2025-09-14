@@ -1,8 +1,7 @@
-
 using Hangfire;
-using TextTranslator.Extensions;
+using TextTranslator.Api.Extensions;
 
-namespace TextTranslator
+namespace TextTranslator.Api
 {
     public class Program
     {
@@ -28,7 +27,7 @@ namespace TextTranslator
                 .UseSwaggerUI()
                 .UseHangfireDashboard("/hangfire") // Jobs dashboard
                 .UseAuthorization();
-            
+
             app.MapControllers();
 
             app.Run();

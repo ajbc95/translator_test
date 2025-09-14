@@ -3,14 +3,14 @@ using Azure.AI.Translation.Text;
 using Hangfire;
 using Hangfire.SqlServer;
 using Microsoft.Data.SqlClient;
-using Microsoft.Extensions.Configuration;
 using Microsoft.OpenApi.Models;
+using TextTranslator.Common;
 using TextTranslator.Repository.Contracts;
 using TextTranslator.Repository.Repositories;
 using TextTranslator.Service.Contracts;
 using TextTranslator.Service.Impl;
 
-namespace TextTranslator.Extensions;
+namespace TextTranslator.Api.Extensions;
 
 public static class ServiceCollectionExtensions
 {
@@ -18,8 +18,8 @@ public static class ServiceCollectionExtensions
     {
         services.AddTransient(services =>
         {
-            var apiKey = configuration["AzureTranslator:ApiKey"];
-            var region = configuration["AzureTranslator:Region"];
+            var apiKey = configuration[Constants.Configuration.AzureTranslatorApiKey];
+            var region = configuration[Constants.Configuration.AzureTranslatorRegion];
 
             if (string.IsNullOrWhiteSpace(apiKey) || string.IsNullOrWhiteSpace(region))
                 throw new InvalidDataException("Azure Translator API key or region are not configured");
@@ -33,12 +33,25 @@ public static class ServiceCollectionExtensions
 
     public static IServiceCollection AddRepositories(this IServiceCollection services, IConfiguration configuration)
     {
-        var connectionString = configuration.GetConnectionString("Translator");
+        // DB connection
+        var connectionString = configuration.GetConnectionString(Constants.Configuration.ConnectionStrings.Translator);
 
         if (string.IsNullOrWhiteSpace(connectionString))
             throw new InvalidDataException("Translator connection string is not configured");
 
-        services.AddScoped(_ => new SqlConnection(connectionString)); // DB connection
+        services.AddScoped(_ => new SqlConnection(connectionString)
+        {
+            RetryLogicProvider = SqlConfigurableRetryFactory.CreateIncrementalRetryProvider(new()
+            {
+                NumberOfTries = 3,
+                MinTimeInterval = TimeSpan.FromSeconds(1),
+                DeltaTime = TimeSpan.FromSeconds(1),
+                MaxTimeInterval = TimeSpan.FromSeconds(5),
+                TransientErrors = null
+            })
+        }); 
+
+        // Repositories
         services.AddScoped<IJobResultsRepository, JobResultsRepository>();
 
         return services;
@@ -57,9 +70,9 @@ public static class ServiceCollectionExtensions
         services.AddEndpointsApiExplorer();
         services.AddSwaggerGen(c =>
         {
-            c.SwaggerDoc("v1", new OpenApiInfo 
-            { 
-                Title = "TextTranslator.Api", 
+            c.SwaggerDoc("v1", new OpenApiInfo
+            {
+                Title = "TextTranslator.Api",
                 Version = "v1",
                 Description = "API for text translation with background job processing. " +
                              "<br/><br/><a href='/hangfire' target='_blank'>📈 View Hangfire Dashboard</a>"
@@ -71,7 +84,7 @@ public static class ServiceCollectionExtensions
 
     public static IServiceCollection AddBackgroundTasksManager(this IServiceCollection services, IConfiguration configuration)
     {
-        var connectionString = configuration.GetConnectionString("Translator");
+        var connectionString = configuration.GetConnectionString(Constants.Configuration.ConnectionStrings.Translator);
 
         if (string.IsNullOrWhiteSpace(connectionString))
             throw new InvalidDataException("Translator connection string is not configured");

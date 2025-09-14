@@ -12,4 +12,8 @@
     <PackageReference Include="Microsoft.Data.SqlClient" Version="6.1.1" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\TextTranslator.Common\TextTranslator.Common.csproj" />
+  </ItemGroup>
+
 </Project>

@@ -12,26 +12,19 @@ public class AzureTranslatorService(TextTranslationClient _translatorClient, IJo
         if (string.IsNullOrWhiteSpace(text))
             return null;
 
-        try
-        {
-            var response = await _translatorClient.TranslateAsync(targetLanguage, text);
-            var translation = response.Value.FirstOrDefault();
-            var translatedText = string.Join(Environment.NewLine,
-                translation?.Translations?.Select(_ => _.Text)?.AsEnumerable() ?? []) ?? string.Empty;
+        var response = await _translatorClient.TranslateAsync(targetLanguage, text);
+        var translation = response.Value.FirstOrDefault();
+        var translatedText = string.Join(Environment.NewLine,
+            translation?.Translations?.Select(_ => _.Text)?.AsEnumerable() ?? []) ?? string.Empty;
 
-            await Task.Delay(10000); // Simulate some delay
+        await Task.Delay(10000); // Simulate some delay
 
-            return new TranslationResult(
-                SourceText: text,
-                TranslatedText: translatedText,
-                DetectedLanguage: translation?.DetectedLanguage?.Language ?? "unknown",
-                TargetLanguage: targetLanguage,
-                ConfidencePercentaje: (translation?.DetectedLanguage?.Confidence ?? 0f) * 100
-            );
-        }
-        catch (Exception ex)
-        {
-            throw new InvalidOperationException($"Translation failed: {ex.Message}", ex);
-        }
+        return new TranslationResult(
+            SourceText: text,
+            TranslatedText: translatedText,
+            DetectedLanguage: translation?.DetectedLanguage?.Language ?? "unknown",
+            TargetLanguage: targetLanguage,
+            ConfidencePercentaje: (translation?.DetectedLanguage?.Confidence ?? 0f) * 100
+        );
     }
 }

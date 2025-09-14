@@ -1,6 +1,12 @@
 ﻿using Azure;
 using Azure.AI.Translation.Text;
+using Hangfire;
+using Hangfire.SqlServer;
+using Microsoft.Data.SqlClient;
+using Microsoft.Extensions.Configuration;
 using Microsoft.OpenApi.Models;
+using TextTranslator.Repository.Contracts;
+using TextTranslator.Repository.Repositories;
 using TextTranslator.Service.Contracts;
 using TextTranslator.Service.Impl;
 
@@ -25,7 +31,20 @@ public static class ServiceCollectionExtensions
         return services;
     }
 
-    public static IServiceCollection AddApplicationServices(this IServiceCollection services)
+    public static IServiceCollection AddRepositories(this IServiceCollection services, IConfiguration configuration)
+    {
+        var connectionString = configuration.GetConnectionString("Translator");
+
+        if (string.IsNullOrWhiteSpace(connectionString))
+            throw new InvalidDataException("Translator connection string is not configured");
+
+        services.AddScoped(_ => new SqlConnection(connectionString)); // DB connection
+        services.AddScoped<IJobResultsRepository, JobResultsRepository>();
+
+        return services;
+    }
+
+    public static IServiceCollection AddServices(this IServiceCollection services)
     {
         services.AddTransient<ITranslatorService, AzureTranslatorService>();
 
@@ -38,7 +57,48 @@ public static class ServiceCollectionExtensions
         services.AddEndpointsApiExplorer();
         services.AddSwaggerGen(c =>
         {
-            c.SwaggerDoc("v1", new OpenApiInfo { Title = "TextTranslator.Api", Version = "v1" });
+            c.SwaggerDoc("v1", new OpenApiInfo 
+            { 
+                Title = "TextTranslator.Api", 
+                Version = "v1",
+                Description = "API for text translation with background job processing. " +
+                             "<br/><br/><a href='/hangfire' target='_blank'>📈 View Hangfire Dashboard</a>"
+            });
+        });
+
+        return services;
+    }
+
+    public static IServiceCollection AddBackgroundTasksManager(this IServiceCollection services, IConfiguration configuration)
+    {
+        var connectionString = configuration.GetConnectionString("Translator");
+
+        if (string.IsNullOrWhiteSpace(connectionString))
+            throw new InvalidDataException("Translator connection string is not configured");
+
+        services.AddHangfire(config => config
+            .SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
+            .UseSimpleAssemblyNameTypeSerializer()
+            .UseRecommendedSerializerSettings()
+            .UseSqlServerStorage(connectionString, new SqlServerStorageOptions
+            {
+                CommandBatchMaxTimeout = TimeSpan.FromMinutes(5),
+                SlidingInvisibilityTimeout = TimeSpan.FromMinutes(5),
+                QueuePollInterval = TimeSpan.Zero,
+                UseRecommendedIsolationLevel = true,
+                DisableGlobalLocks = true
+            }));
+
+        // Configure Hangfire server with explicit options
+        services.AddHangfireServer(options =>
+        {
+            options.ServerName = Environment.MachineName;
+            options.WorkerCount = Math.Max(Environment.ProcessorCount, 20);
+            options.ServerTimeout = TimeSpan.FromMinutes(4);
+            options.SchedulePollingInterval = TimeSpan.FromSeconds(15);
+            options.HeartbeatInterval = TimeSpan.FromSeconds(30);
+            options.ServerCheckInterval = TimeSpan.FromMinutes(4);
+            options.CancellationCheckInterval = TimeSpan.FromSeconds(5);
         });
 
         return services;

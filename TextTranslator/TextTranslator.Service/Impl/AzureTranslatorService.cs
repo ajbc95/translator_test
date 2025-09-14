@@ -1,12 +1,13 @@
 ﻿using Azure.AI.Translation.Text;
-using TextTranslator.Service.Contracts;
+using TextTranslator.Repository.Contracts;
 using TextTranslator.Service.Model;
 
 namespace TextTranslator.Service.Impl;
 
-public class AzureTranslatorService(TextTranslationClient _translatorClient) : ITranslatorService
+public class AzureTranslatorService(TextTranslationClient _translatorClient, IJobResultsRepository resultsRepository) 
+    : TranslatorService(resultsRepository)
 {
-    public async Task<TranslationResult?> TranslateAsync(string text, string targetLanguage = "es")
+    public override async Task<TranslationResult?> TranslateAsync(string text, string targetLanguage = "es")
     {
         if (string.IsNullOrWhiteSpace(text))
             return null;
@@ -17,6 +18,8 @@ public class AzureTranslatorService(TextTranslationClient _translatorClient) : I
             var translation = response.Value.FirstOrDefault();
             var translatedText = string.Join(Environment.NewLine,
                 translation?.Translations?.Select(_ => _.Text)?.AsEnumerable() ?? []) ?? string.Empty;
+
+            await Task.Delay(10000); // Simulate some delay
 
             return new TranslationResult(
                 SourceText: text,

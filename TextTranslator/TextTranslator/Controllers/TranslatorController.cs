@@ -9,24 +9,17 @@ namespace TextTranslator.Api.Controllers;
 public class TranslatorController(ITranslatorService translatorService) : ControllerBase
 {
     [HttpPost("Translate")]
-    [ProducesResponseType(typeof(TranslationResult), StatusCodes.Status202Accepted)]
-    public IActionResult TranslateText([FromBody] string originalText)
-    {
-        var workId = Guid.NewGuid().ToString();
-
-        var result = translatorService.TranslateAsync(originalText);
-        result.Wait();
-
-        return Accepted(result.Result);
-    }
+    [ProducesResponseType(typeof(Guid), StatusCodes.Status202Accepted)]
+    public IActionResult TranslateText([FromBody] string originalText) 
+        => Accepted(translatorService.TranslateJob(originalText));
 
     [HttpGet("Result/{workId}")]
     [ProducesResponseType(typeof(TranslationResult), StatusCodes.Status200OK)]
-    public IActionResult GetTranslationResult(string workId)
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetTranslationResult(Guid workId)
     {
-        // TODO: Retrieve the translation result associated with workId
-        var translatedText = "Translated text for workId: " + workId; // Placeholder
-        
-        return !string.IsNullOrWhiteSpace(translatedText) ? Ok(translatedText) : NoContent();
+        var translationResult = await translatorService.GetTranslationResult(workId);
+
+        return translationResult is not null ? Ok(translationResult) : NotFound();
     }
 }

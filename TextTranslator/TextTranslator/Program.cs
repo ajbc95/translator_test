@@ -1,4 +1,5 @@
 
+using Hangfire;
 using TextTranslator.Extensions;
 
 namespace TextTranslator
@@ -14,20 +15,18 @@ namespace TextTranslator
                 .AddProblemDetails()
                 .AddSwagger()
                 .AddAzureServices(builder.Configuration) // Register Azure services
-                .AddApplicationServices() // Register application services
+                .AddRepositories(builder.Configuration) // Register repositories
+                .AddBackgroundTasksManager(builder.Configuration) // Register Hangfire services
+                .AddServices() // Register application services
                 .AddControllers();
 
             var app = builder.Build();
-
-            //if (app.Environment.IsDevelopment())
-            //{
-                
-            //}
 
             app.UseExceptionHandler()
                 .UseStatusCodePages()
                 .UseSwagger()
                 .UseSwaggerUI()
+                .UseHangfireDashboard("/hangfire") // Jobs dashboard
                 .UseAuthorization();
             
             app.MapControllers();

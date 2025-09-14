@@ -13,6 +13,8 @@ namespace TextTranslator
             builder.Services
                 .AddProblemDetails()
                 .AddSwagger()
+                .AddAzureServices(builder.Configuration) // Register Azure services
+                .AddApplicationServices() // Register application services
                 .AddControllers();
 
             var app = builder.Build();

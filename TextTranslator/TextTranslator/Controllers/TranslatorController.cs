@@ -1,23 +1,27 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using TextTranslator.Service.Contracts;
+using TextTranslator.Service.Model;
 
 namespace TextTranslator.Api.Controllers;
 
 [ApiController]
 [Route("[controller]")]
-public class TranslatorController : ControllerBase
+public class TranslatorController(ITranslatorService translatorService) : ControllerBase
 {
     [HttpPost("Translate")]
-    [ProducesResponseType(typeof(string), StatusCodes.Status202Accepted)]
+    [ProducesResponseType(typeof(TranslationResult), StatusCodes.Status202Accepted)]
     public IActionResult TranslateText([FromBody] string originalText)
     {
         var workId = Guid.NewGuid().ToString();
 
-        // TODO: Add translation logic here and store the result associated with workId
+        var result = translatorService.TranslateAsync(originalText);
+        result.Wait();
 
-        return Accepted(workId);
+        return Accepted(result.Result);
     }
 
     [HttpGet("Result/{workId}")]
+    [ProducesResponseType(typeof(TranslationResult), StatusCodes.Status200OK)]
     public IActionResult GetTranslationResult(string workId)
     {
         // TODO: Retrieve the translation result associated with workId
